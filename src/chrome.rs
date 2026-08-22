@@ -5,7 +5,7 @@
 pub enum ColorPolicy {
     /// Enable color only for an interactive terminal that did not opt out.
     Auto,
-    /// Enable color when the terminal supports it and `NO_COLOR` is absent.
+    /// Enable color even for redirected Human output unless `NO_COLOR` is set.
     Always,
     /// Use terminal defaults only.
     Never,
@@ -27,7 +27,8 @@ pub enum ChromeToken {
 pub const fn color_enabled(policy: ColorPolicy, is_terminal: bool, no_color_is_set: bool) -> bool {
     match policy {
         ColorPolicy::Never => false,
-        ColorPolicy::Auto | ColorPolicy::Always => is_terminal && !no_color_is_set,
+        ColorPolicy::Auto => is_terminal && !no_color_is_set,
+        ColorPolicy::Always => !no_color_is_set,
     }
 }
 
@@ -41,5 +42,6 @@ mod tests {
         assert!(!color_enabled(ColorPolicy::Auto, true, true));
         assert!(!color_enabled(ColorPolicy::Never, true, false));
         assert!(color_enabled(ColorPolicy::Auto, true, false));
+        assert!(color_enabled(ColorPolicy::Always, false, false));
     }
 }

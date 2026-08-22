@@ -22,8 +22,8 @@ pub fn truncate_to_width(value: &str, maximum_width: usize) -> String {
 pub fn fit_display_width(value: &str, width: usize) -> String {
     if display_width(value) <= width {
         value.to_owned()
-    } else if width <= ELLIPSIS.len() {
-        take_display_width(ELLIPSIS, width)
+    } else if width < display_width(ELLIPSIS) {
+        take_display_width(value, width)
     } else {
         format!(
             "{}{}",
@@ -68,6 +68,7 @@ mod tests {
         assert_eq!(display_width("诊"), 2);
         assert_eq!(truncate_to_width("e\u{301}诊断", 3), "e\u{301}诊");
         assert_eq!(fit_display_width("可靠性中心", 7), "可靠...");
+        assert_eq!(fit_display_width("e\u{301}x", 1), "e\u{301}");
         assert_eq!(display_width(&pad_display_width("诊", 4)), 4);
     }
 }
