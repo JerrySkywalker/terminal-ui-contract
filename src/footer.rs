@@ -4,6 +4,7 @@
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FooterState {
     NormalNavigation,
+    NormalNavigationWithRefresh,
     LocalList,
     Detail,
     SettingsNormal,
@@ -45,6 +46,28 @@ pub struct FooterHint {
 }
 
 const NORMAL_NAVIGATION: &[FooterHint] = &[
+    FooterHint {
+        key: "↑↓",
+        action: FooterAction::Navigate,
+    },
+    FooterHint {
+        key: "Enter",
+        action: FooterAction::Open,
+    },
+    FooterHint {
+        key: "a",
+        action: FooterAction::Apply,
+    },
+    FooterHint {
+        key: "r",
+        action: FooterAction::Revert,
+    },
+    FooterHint {
+        key: "q",
+        action: FooterAction::Quit,
+    },
+];
+const NORMAL_NAVIGATION_WITH_REFRESH: &[FooterHint] = &[
     FooterHint {
         key: "↑↓",
         action: FooterAction::Navigate,
@@ -191,6 +214,7 @@ impl FooterState {
     pub const fn hints(self) -> &'static [FooterHint] {
         match self {
             Self::NormalNavigation => NORMAL_NAVIGATION,
+            Self::NormalNavigationWithRefresh => NORMAL_NAVIGATION_WITH_REFRESH,
             Self::LocalList => LOCAL_LIST,
             Self::Detail => DETAIL,
             Self::SettingsNormal => SETTINGS_NORMAL,
