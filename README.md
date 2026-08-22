@@ -1,14 +1,12 @@
-# jerry-terminal-ui
+# terminal-ui-contract
 
-`jerry-terminal-ui` is the dependency-neutral Human-interface contract shared
+`terminal-ui-contract` is the dependency-neutral Human-interface contract shared
 by JerrySkywalker terminal applications. It owns semantic shell, navigation,
 footer, edit, overlay, input, locale, and display-width behavior. Product
 adapters own their concrete Ratatui/Crossterm rendering and domain content.
 
-The crate is intentionally not published during its initial adoption train.
-Consumers use a pinned Git revision until a separately approved release train
-publishes the crate first, then updates and publishes consumers in dependency
-order.
+The crate is published on crates.io as `terminal-ui-contract` 0.1.0. Consumers
+bind the exact released semver version before publishing in dependency order.
 
 ## Scope
 
@@ -27,5 +25,5 @@ cargo test
 cargo build --locked
 ```
 
-CI covers Windows and Linux. No crates.io publication, release tag, or GitHub
-Release is part of this repository's bootstrap or the HookStat v0.3 train.
+CI covers Windows and Linux. Releases require explicit authorization and must
+bind the tag, GitHub Release, and crates.io package to the same accepted commit.

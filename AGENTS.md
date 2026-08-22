@@ -1,4 +1,4 @@
-# jerry-terminal-ui Agent Instructions
+# terminal-ui-contract Agent Instructions
 
 This crate is shared Human-interface infrastructure. Keep its public API
 dependency-neutral: do not expose Ratatui, Crossterm, HookStat, TabBeacon, or

@@ -1,7 +1,6 @@
-# Future publication ordering
+# Publication ordering
 
-The first public release of `jerry-terminal-ui` is intentionally outside the
-HookStat v0.3 G20–G23 train.
+The first public release of `terminal-ui-contract` precedes consumer releases.
 
 Before a consumer can publish a crates.io version that names this crate:
 
