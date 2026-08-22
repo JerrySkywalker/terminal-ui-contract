@@ -1,11 +1,11 @@
 [package]
-name = "jerry-terminal-ui"
+name = "terminal-ui-contract"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"
 description = "Dependency-neutral terminal Human interface contract primitives"
-repository = "https://github.com/JerrySkywalker/jerry-terminal-ui"
+repository = "https://github.com/JerrySkywalker/terminal-ui-contract"
 keywords = ["terminal", "tui", "accessibility", "localization"]
 categories = ["command-line-interface"]
 
