@@ -1,5 +1,10 @@
 # Explicit keymap loading
 
+Product preview/confirmation contexts can explicitly opt into typed write
+requests with `with_modal_write_requests`. Generic capture contexts remain
+read-only; a TOML overlay cannot grant this opt-in. Effective Help/footer hints
+and dispatch share the same predicate. Products retain the execution and CAS gate.
+
 The product chooses the file path and passes UTF-8 text to
 `KeymapRegistry::from_toml`. No cwd scan, remote load, implicit persistence,
 backup/CAS operation or live watcher exists. Invalid overlays never mutate an

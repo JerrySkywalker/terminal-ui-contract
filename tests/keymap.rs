@@ -25,6 +25,60 @@ fn key(value: &str) -> InputEvent {
         kind: InputKind::Press,
     })
 }
+
+#[test]
+fn modal_write_requests_require_explicit_product_context_opt_in() {
+    let mut actions = ActionRegistry::standard(NavigationPolicy::Pane);
+    actions
+        .register_product(ActionDescriptor {
+            id: "consumer.apply".into(),
+            label: "Apply request".into(),
+            action: Action::Product("consumer.apply".into()),
+            effect: ActionEffect::ProductWriteRequest,
+            contexts: vec!["preview".into()],
+        })
+        .unwrap();
+    let map = KeymapRegistry::new(
+        KeymapProfile::Standard,
+        NavigationPolicy::Pane,
+        actions,
+        vec![Binding::new("preview", &["a"], "consumer.apply").unwrap()],
+    )
+    .unwrap();
+    let mut context = ResolveContext::normal(&["preview", "settings"]);
+    context.capture = Capture::Overlay;
+    let mut resolver = Resolver::new(SystemClock::default());
+    assert_eq!(
+        resolver.resolve(&map, &context, &key("a")),
+        Resolution::Consumed
+    );
+    let admitted = map.clone().with_modal_write_requests(&["preview"]).unwrap();
+    assert!(
+        !map.effective_hints(&context)
+            .iter()
+            .any(|hint| hint.action_id == "consumer.apply")
+    );
+    assert!(
+        admitted
+            .effective_hints(&context)
+            .iter()
+            .any(|hint| hint.action_id == "consumer.apply" && hint.keys == "a")
+    );
+    assert_eq!(
+        resolver.resolve(&admitted, &context, &key("a")),
+        Resolution::Intent(ActionIntent {
+            action: Action::Product("consumer.apply".into()),
+            effect: ActionEffect::ProductWriteRequest,
+            count: 1
+        })
+    );
+    context.contexts[0] = "help".into();
+    assert_eq!(
+        resolver.resolve(&admitted, &context, &key("a")),
+        Resolution::Consumed
+    );
+    assert!(map.with_modal_write_requests(&["global"]).is_err());
+}
 fn intent(action: Action, count: u32) -> Resolution {
     Resolution::Intent(ActionIntent {
         action,

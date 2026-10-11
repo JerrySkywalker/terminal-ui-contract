@@ -19,6 +19,15 @@ built-ins, product bindings and a validated TOML overlay. `Resolver` receives a
 monotonic clock and returns `Resolution`, never an executable or callback.
 Both Help and footer use `effective_hints` from that same registry/context.
 
+TabBeacon's real Preview-to-Apply flow demonstrated a consumer blocker: default
+modal capture correctly suppresses writes, but also suppressed an explicitly
+owned confirmation request. The additive `with_modal_write_requests(&["product_preview"])`
+opt-in admits only `ProductWriteRequest` descriptors that explicitly declare that
+product context. Dispatch and effective hints use the same admission predicate.
+Generic global/editor/help/overlay/confirm contexts remain forbidden. Defaults
+are unchanged. This produces an intent only; the product still owns confirmation,
+permission, ownership, CAS and execution. It does not confer trust or writer authority.
+
 Contexts are supplied deepest owner first, current page then global. Editor,
 Overlay and Confirm capture stop all lower fallback. Esc and Ctrl+C are reserved
 cancel/quit **requests**; the product must still use its dirty/confirmation gate.

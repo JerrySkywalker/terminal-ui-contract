@@ -376,6 +376,7 @@ pub struct KeymapRegistry {
     pub profile: KeymapProfile,
     pub navigation: NavigationPolicy,
     pub sequence_timeout: Duration,
+    modal_write_requests: BTreeSet<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -415,6 +416,7 @@ impl KeymapRegistry {
             profile,
             navigation,
             sequence_timeout: Duration::from_millis(600),
+            modal_write_requests: BTreeSet::new(),
         };
         for (key, id) in [
             ("Up", "ui.move.up"),
@@ -475,6 +477,31 @@ impl KeymapRegistry {
         }
         map.validate()?;
         Ok(map)
+    }
+
+    /// Explicit opt-in for a product-owned confirmation/preview context.
+    /// Returns requests only; permission, ownership and CAS remain product-owned.
+    /// Defaults keep all modal write requests suppressed. Global/editor fallback
+    /// is never admitted, and the action must explicitly declare this context.
+    pub fn with_modal_write_requests(mut self, contexts: &[&str]) -> Result<Self, KeymapError> {
+        for context in contexts {
+            if matches!(
+                *context,
+                "global" | "editor" | "help" | "overlay" | "confirm" | ""
+            ) {
+                return Err(KeymapError(
+                    "modal requests require an explicit product context".into(),
+                ));
+            }
+            self.modal_write_requests.insert((*context).into());
+        }
+        Ok(self)
+    }
+
+    fn modal_request_allowed(&self, owner: &str, descriptor: &ActionDescriptor) -> bool {
+        descriptor.effect == ActionEffect::ProductWriteRequest
+            && self.modal_write_requests.contains(owner)
+            && descriptor.contexts.iter().any(|context| context == owner)
     }
 
     fn builtin(&mut self, context: &str, keys: &[&str], action: &str) -> Result<(), KeymapError> {
@@ -709,6 +736,7 @@ impl KeymapRegistry {
                 }
                 if matches!(context.capture, Capture::Overlay | Capture::Confirm)
                     && descriptor.effect != ActionEffect::View
+                    && !self.modal_request_allowed(owner, descriptor)
                 {
                     continue;
                 }
@@ -1049,7 +1077,8 @@ impl<C: MonotonicClock> Resolver<C> {
                 self.cancel();
                 if (action == Action::EnterInsert && !context.editable)
                     || (matches!(context.capture, Capture::Overlay | Capture::Confirm)
-                        && descriptor.effect != ActionEffect::View)
+                        && descriptor.effect != ActionEffect::View
+                        && !map.modal_request_allowed(owner, descriptor))
                 {
                     return Resolution::Consumed;
                 }
