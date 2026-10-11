@@ -125,66 +125,89 @@ pub fn draw_component_gallery(
 pub fn document(consumer: Consumer, screen: usize, revision: u64) -> UiDocument {
     let source = consumer.name();
     let scope = consumer.screens()[screen];
-    let facts = [
-        (
-            "upstream",
-            Verdict::Blocked,
-            "Upstream qualification",
-            "上游资格阻塞",
-        ),
-        (
-            "current",
-            Verdict::Unproven,
-            "Current delivery",
-            "当前交付未证实",
-        ),
-        (
-            "static",
-            Verdict::StaticPass,
-            "Static structure",
-            "静态结构通过",
-        ),
-    ]
-    .into_iter()
-    .map(|(id, verdict, label, summary)| UiFact {
-        id: format!("synthetic.{id}"),
-        label: label.into(),
-        verdict,
-        severity: if verdict == Verdict::StaticPass {
-            Severity::Information
-        } else {
-            Severity::Attention
-        },
-        source: source.into(),
-        scope: scope.into(),
-        sampled_at: SystemTime::UNIX_EPOCH,
-        freshness: FactFreshness::Unknown,
-        summary: PermittedText::from_product_redaction(summary),
-        impact: PermittedText::from_product_redaction(
-            "Synthetic evidence; no real provider or ledger qualification",
-        ),
-        evidence: vec![
-            EvidenceField {
-                label: "Synthetic count".into(),
-                value: PermittedText::from_product_redaction("3"),
-            },
-            EvidenceField {
-                label: "Evidence boundary".into(),
-                value: PermittedText::from_product_redaction(
-                    "static only; current delivery remains UNPROVEN",
-                ),
-            },
+    let entries = match consumer {
+        Consumer::TabBeacon => [
+            (
+                "upstream",
+                Verdict::Blocked,
+                "Upstream qualification",
+                "上游资格阻塞",
+            ),
+            (
+                "current",
+                Verdict::Unproven,
+                "Current delivery",
+                "当前交付未证实",
+            ),
+            (
+                "static",
+                Verdict::StaticPass,
+                "Static structure",
+                "静态结构通过",
+            ),
         ],
-        next_steps: vec![SafeNextStep {
-            label: "Inspect synthetic evidence".into(),
-            intent: ActionIntent {
-                action: Action::Help,
-                effect: ActionEffect::View,
-                count: 1,
+        Consumer::HookStat => [
+            (
+                "coverage",
+                Verdict::Unproven,
+                "Handler coverage (3 / 5 sample)",
+                "合成样本：3 个观察事件 / 5 个预期处理器，实际覆盖未证实",
+            ),
+            (
+                "window",
+                Verdict::Blocked,
+                "Incomplete event window",
+                "合成窗口缺少当前事件，不能推断实时可靠性",
+            ),
+            (
+                "denominator",
+                Verdict::StaticPass,
+                "Known synthetic denominator",
+                "预期处理器数量静态已知，不代表真实执行通过",
+            ),
+        ],
+    };
+    let facts = entries
+        .into_iter()
+        .map(|(id, verdict, label, summary)| UiFact {
+            id: format!("synthetic.{id}"),
+            label: label.into(),
+            verdict,
+            severity: if verdict == Verdict::StaticPass {
+                Severity::Information
+            } else {
+                Severity::Attention
             },
-        }],
-    })
-    .collect();
+            source: source.into(),
+            scope: scope.into(),
+            sampled_at: SystemTime::UNIX_EPOCH,
+            freshness: FactFreshness::Unknown,
+            summary: PermittedText::from_product_redaction(summary),
+            impact: PermittedText::from_product_redaction(
+                "Synthetic evidence; no real provider or ledger qualification",
+            ),
+            evidence: vec![
+                EvidenceField {
+                    label: "Synthetic count".into(),
+                    value: PermittedText::from_product_redaction("3"),
+                },
+                EvidenceField {
+                    label: "Evidence boundary".into(),
+                    value: PermittedText::from_product_redaction(
+                        "static only; current delivery remains UNPROVEN",
+                    ),
+                },
+            ],
+            next_steps: vec![SafeNextStep {
+                label: "Inspect synthetic evidence".into(),
+                intent: ActionIntent {
+                    action: Action::Help,
+                    effect: ActionEffect::View,
+                    count: 1,
+                },
+            }],
+        })
+        .collect();
     UiDocument::new(revision, SystemTime::UNIX_EPOCH, facts).expect("known synthetic facts")
 }
 
