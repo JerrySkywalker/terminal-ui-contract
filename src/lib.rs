@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod chrome;
+pub mod focus;
 pub mod footer;
 pub mod input;
 pub mod interaction;
@@ -14,3 +15,4 @@ pub mod layout;
 pub mod locale;
 pub mod navigation;
 pub mod text;
+pub mod viewport;
