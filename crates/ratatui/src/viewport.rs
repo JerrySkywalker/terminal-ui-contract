@@ -24,7 +24,9 @@ pub fn render_scroll_pane(
     };
     let rows = wrap_display_rows(text, body.width as usize);
     viewport.reflow(rows.len(), body.height as usize);
-    block.render(area, buffer);
+    block
+        .title_bottom(viewport.position_label())
+        .render(area, buffer);
     let visible = rows
         .iter()
         .skip(viewport.offset())
@@ -32,7 +34,7 @@ pub fn render_scroll_pane(
         .map(|s| ratatui::text::Line::raw(s.clone()))
         .collect::<Vec<_>>();
     Paragraph::new(Text::from(visible)).render(body, buffer);
-    if inner.width > 0 && inner.height > 0 {
+    if inner.width > 0 && inner.height > 0 && viewport.max_offset() > 0 {
         let mut state = ScrollbarState::new(rows.len())
             .position(viewport.offset())
             .viewport_content_length(viewport.visible_rows());

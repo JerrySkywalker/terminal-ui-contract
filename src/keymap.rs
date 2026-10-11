@@ -283,9 +283,11 @@ pub struct ResolveContext {
 
 impl ResolveContext {
     pub fn normal(contexts: &[&str]) -> Self {
+        let mut seen = BTreeSet::new();
         Self {
             contexts: contexts
                 .iter()
+                .filter(|s| !s.is_empty() && **s != "global" && seen.insert(**s))
                 .map(|s| (*s).into())
                 .chain(std::iter::once("global".into()))
                 .collect(),
@@ -490,6 +492,19 @@ impl KeymapRegistry {
     }
 
     pub fn validate(&self) -> Result<(), KeymapError> {
+        let expected = match self.navigation {
+            NavigationPolicy::Direct => Action::MoveScreen(-1),
+            NavigationPolicy::Pane => Action::Move(Direction::Up),
+        };
+        if self
+            .actions
+            .get("ui.move.up")
+            .is_none_or(|descriptor| descriptor.action != expected)
+        {
+            return Err(KeymapError(
+                "action registry/navigation policy mismatch".into(),
+            ));
+        }
         for (i, binding) in self.bindings.iter().enumerate() {
             let descriptor = self
                 .actions
@@ -661,6 +676,18 @@ impl KeymapRegistry {
             origin: BindingOrigin::BuiltIn,
         });
         if context.mode == InputMode::Insert || context.capture == Capture::Editor {
+            if context.mode == InputMode::Normal
+                && context.capture == Capture::Editor
+                && context.editable
+                && self.profile == KeymapProfile::Vim
+            {
+                result.push(EffectiveHint {
+                    keys: "i".into(),
+                    label: "Insert".into(),
+                    action_id: "ui.mode.insert".into(),
+                    origin: BindingOrigin::BuiltIn,
+                });
+            }
             return result;
         }
         let mut claimed: Vec<Vec<KeyChord>> = vec![];
@@ -701,6 +728,31 @@ impl KeymapRegistry {
         }
         result
     }
+
+    /// Compact footer projection from the same effective registry, with density,
+    /// Help and recovery first so essential keys remain visible in narrow frames.
+    pub fn footer_hints(&self, context: &ResolveContext) -> Vec<EffectiveHint> {
+        let mut hints = self.effective_hints(context);
+        let priority = [
+            "ui.view.toggle_density",
+            "ui.help",
+            "ui.cancel",
+            "ui.quit",
+            "ui.focus.next",
+            "ui.focus.previous",
+            "ui.viewport.page_up",
+            "ui.viewport.page_down",
+        ];
+        hints.sort_by_key(|hint| {
+            priority
+                .iter()
+                .position(|id| *id == hint.action_id)
+                .unwrap_or(priority.len())
+        });
+        let mut ids = BTreeSet::new();
+        hints.retain(|hint| ids.insert(hint.action_id.clone()));
+        hints
+    }
 }
 
 #[derive(Deserialize)]
@@ -725,6 +777,14 @@ struct ConfigKey {
 }
 impl ConfigKey {
     fn chords(&self) -> Result<Vec<KeyChord>, KeymapError> {
+        if self.context.is_empty()
+            || !(1..=4).contains(&self.keys.len())
+            || self.mode == InputMode::Insert
+        {
+            return Err(KeymapError(
+                "unbind requires Normal context and 1..=4 keys".into(),
+            ));
+        }
         self.keys.iter().map(|s| parse_chord(s)).collect()
     }
 }
@@ -920,6 +980,18 @@ impl<C: MonotonicClock> Resolver<C> {
         }
         if context.mode == InputMode::Insert || context.capture == Capture::Editor {
             self.cancel();
+            if context.mode == InputMode::Normal
+                && context.capture == Capture::Editor
+                && context.editable
+                && map.profile == KeymapProfile::Vim
+                && chord == KeyChord::new(KeyCode::Char('i'), Modifiers::NONE)
+            {
+                return Resolution::Intent(ActionIntent {
+                    action: Action::EnterInsert,
+                    effect: ActionEffect::View,
+                    count: 1,
+                });
+            }
             return if context.editable && event.chord.modifiers.is_text() {
                 match chord.code {
                     KeyCode::Char(c) => Resolution::Text(c.to_string()),

@@ -42,6 +42,15 @@ impl BoundedViewport {
     pub fn half_page(&mut self, delta: isize) {
         self.step((self.visible_rows / 2).max(1), delta);
     }
+    pub fn ensure_visible(&mut self, row: usize) {
+        let row = row.min(self.content_rows.saturating_sub(1));
+        if row < self.offset {
+            self.offset = row;
+        } else if row >= self.offset.saturating_add(self.visible_rows) {
+            self.offset = row.saturating_add(1).saturating_sub(self.visible_rows);
+        }
+        self.offset = self.offset.min(self.max_offset());
+    }
     fn step(&mut self, rows: usize, delta: isize) {
         let distance = rows.saturating_mul(delta.unsigned_abs());
         self.offset = if delta < 0 {
@@ -52,7 +61,9 @@ impl BoundedViewport {
         .min(self.max_offset());
     }
     pub fn position_label(&self) -> String {
-        if self.content_rows == 0 {
+        if self.visible_rows == 0 {
+            format!("0 / {}", self.content_rows)
+        } else if self.content_rows == 0 {
             "0 / 0".into()
         } else {
             format!(

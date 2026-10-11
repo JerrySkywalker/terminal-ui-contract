@@ -311,12 +311,17 @@ impl<R: Send + 'static, T: Eq + Send + Sync + 'static> RefreshController<R, T> {
         if self
             .accepted_at
             .is_some_and(|time| now.saturating_sub(time) >= self.policy.stale_after)
-            && !self.active.is_some()
             && let Some(last) = &self.last
         {
-            self.state = ResourceState::Stale {
-                last_accepted: last.clone(),
-            };
+            match &mut self.state {
+                ResourceState::Loading { stale, .. } => *stale = true,
+                ResourceState::Error { .. } => {}
+                _ => {
+                    self.state = ResourceState::Stale {
+                        last_accepted: last.clone(),
+                    }
+                }
+            }
         }
         if now < self.next_poll {
             return Ok(None);
@@ -332,6 +337,8 @@ impl<R: Send + 'static, T: Eq + Send + Sync + 'static> RefreshController<R, T> {
             Ok(response) => response,
             Err(TryRecvError::Empty) => return RefreshPoll::Pending,
             Err(TryRecvError::Disconnected) => {
+                self.active = None;
+                self.pending = None;
                 self.state = ResourceState::Error {
                     last_accepted: self.last.clone(),
                     error: CollectError::WorkerUnavailable,
