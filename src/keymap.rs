@@ -385,6 +385,22 @@ pub struct EffectiveHint {
 }
 
 impl KeymapRegistry {
+    /// Initial load from explicitly supplied configuration text. The product owns
+    /// file selection and whether failure uses its last accepted/base registry.
+    pub fn from_toml(
+        text: &str,
+        product_actions: Vec<ActionDescriptor>,
+        product_bindings: Vec<Binding>,
+    ) -> Result<Self, KeymapError> {
+        let config: Config = toml::from_str(text).map_err(|e| KeymapError(e.to_string()))?;
+        let profile = config.preset.unwrap_or_default();
+        let navigation = config.navigation.unwrap_or_default();
+        let mut actions = ActionRegistry::standard(navigation);
+        for action in product_actions {
+            actions.register_product(action)?;
+        }
+        Self::new(profile, navigation, actions, product_bindings)?.overlay_toml(text)
+    }
     pub fn new(
         profile: KeymapProfile,
         navigation: NavigationPolicy,

@@ -342,3 +342,42 @@ fn legacy_direct_navigation_remains_available() {
             .is_empty()
     );
 }
+
+#[test]
+fn initial_toml_profile_and_cross_context_prefix_ownership() {
+    let map = KeymapRegistry::from_toml(
+        "schema_version=1\npreset='vim'\nnavigation='direct'",
+        vec![],
+        vec![],
+    )
+    .unwrap();
+    let mut resolver = Resolver::new(SystemClock::default());
+    assert_eq!(
+        resolver.resolve(&map, &ResolveContext::normal(&[]), &key("j")),
+        intent(Action::MoveScreen(1), 1)
+    );
+    let map = map
+        .overlay_toml(
+            "schema_version=1\n[[bindings]]\ncontext='details'\nkeys=['g','x']\naction='ui.help'",
+        )
+        .unwrap();
+    let context = ResolveContext::normal(&["details"]);
+    assert_eq!(
+        resolver.resolve(&map, &context, &key("g")),
+        Resolution::Pending
+    );
+    assert_eq!(
+        resolver.resolve(&map, &context, &key("g")),
+        Resolution::NoBinding
+    );
+    assert!(
+        !map.effective_hints(&context)
+            .iter()
+            .any(|h| h.keys == "g g")
+    );
+    assert!(
+        map.diagnostics(&context, &["ui.viewport.home"])
+            .iter()
+            .any(|d| matches!(d, Diagnostic::Shadow { .. }))
+    );
+}
