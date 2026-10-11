@@ -620,9 +620,10 @@ impl KeymapRegistry {
                 .iter()
                 .filter(|b| &b.context == owner && b.mode == context.mode)
             {
-                if let Some(hidden) = prior.iter().find(|b| {
-                    b.keys.starts_with(&binding.keys) || binding.keys.starts_with(&b.keys)
-                }) {
+                if let Some(hidden) = prior
+                    .iter()
+                    .find(|b| b.keys.first() == binding.keys.first())
+                {
                     diagnostics.push(Diagnostic::Shadow {
                         context: hidden.context.clone(),
                         keys: format_keys(&binding.keys),
@@ -671,7 +672,7 @@ impl KeymapRegistry {
             {
                 if claimed
                     .iter()
-                    .any(|keys| keys.starts_with(&binding.keys) || binding.keys.starts_with(keys))
+                    .any(|keys| keys.first() == binding.keys.first())
                 {
                     continue;
                 }
