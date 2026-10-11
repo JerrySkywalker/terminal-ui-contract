@@ -1,0 +1,16 @@
+[package]
+name = "terminal-ui-ratatui"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Ratatui presentation and terminal input adapter for terminal-ui-contract"
+
+[dependencies]
+terminal-ui-contract = { path = "../..", version = "=0.2.0" }
+ratatui = { version = "=0.30.2", default-features = false, features = ["crossterm"] }
+crossterm = "=0.29.0"
+
+[dev-dependencies]
+terminal-ui-runtime = { path = "../runtime", version = "=0.1.0" }
