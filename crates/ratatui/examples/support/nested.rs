@@ -25,6 +25,7 @@ pub struct NestedScene {
     pub modal: bool,
     pub parent_rect: Rect,
     pub child_rect: Rect,
+    pub child_logical_rect: Rect,
 }
 impl Default for NestedScene {
     fn default() -> Self {
@@ -37,6 +38,7 @@ impl Default for NestedScene {
             modal: false,
             parent_rect: Rect::default(),
             child_rect: Rect::default(),
+            child_logical_rect: Rect::default(),
         }
     }
 }
@@ -93,17 +95,17 @@ impl NestedScene {
         self.parent_rect = area;
         let inner = pane_block("", false, theme).inner(area);
         // Actual child occupies a subset of the parent body. Rendering is clipped too.
-        self.child_rect = if inner.width >= 16 && inner.height >= 8 {
+        self.child_logical_rect = if inner.width >= 16 && inner.height >= 8 {
             Rect::new(
                 inner.x + inner.width / 3,
                 inner.y + 2,
-                inner.width * 2 / 3,
+                (inner.width * 2 / 3).saturating_add(8),
                 inner.height.saturating_sub(3),
             )
-            .intersection(inner)
         } else {
             Rect::default()
         };
+        self.child_rect = self.child_logical_rect.intersection(inner);
         let parent_path = FocusPath::new(&["parent"]);
         let child_path = FocusPath::new(&["parent", "child"]);
         render_scroll_pane(
@@ -133,7 +135,7 @@ impl NestedScene {
             );
             regions.push(region(
                 &["parent", "child"],
-                self.child_rect,
+                self.child_logical_rect,
                 inner,
                 1,
                 true,
@@ -202,6 +204,17 @@ pub fn scenario(scene: &mut NestedScene, index: usize) -> &'static str {
             "ancestor-scroll-focus-preserved"
         }
         2 => {
+            let prior_child = scene.child.offset();
+            assert!(scene.child_logical_rect.right() > scene.child_rect.right());
+            assert!(matches!(
+                scene.pointer(mouse(scene.parent_rect.right().saturating_sub(1), child.y + 1, MouseKind::ScrollDown)),
+                PointerEffect::Scroll {path, ..} if path == FocusPath::new(&["parent"])
+            ));
+            assert_eq!(
+                scene.child.offset(),
+                prior_child,
+                "clipped child must not receive border/outside-clip scroll"
+            );
             assert_eq!(
                 scene.pointer(mouse(
                     scene.parent_rect.right(),
@@ -210,7 +223,7 @@ pub fn scenario(scene: &mut NestedScene, index: usize) -> &'static str {
                 )),
                 PointerEffect::Consumed
             );
-            "clip-outside-visible"
+            "partially-clipped-child-and-outside-parent"
         }
         3 => {
             scene.set_modal(true);
