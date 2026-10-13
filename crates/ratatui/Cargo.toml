@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Ratatui presentation and terminal input adapter for terminal-ui-contract"
+readme = "README.md"
+publish = ["crates-io"]
+include = ["Cargo.toml", "Cargo.lock", "LICENSE", "README.md", "CHANGELOG.md", "src/**", "tests/**", "examples/**"]
 
 [dependencies]
 terminal-ui-contract = { path = "../..", version = "=0.2.0" }

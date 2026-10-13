@@ -8,6 +8,8 @@ description = "Dependency-neutral terminal Human interface contract primitives"
 repository = "https://github.com/JerrySkywalker/terminal-ui-contract"
 keywords = ["terminal", "tui", "accessibility", "localization"]
 categories = ["command-line-interface"]
+readme = "README.md"
+publish = ["crates-io"]
 include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md", "docs/**"]
 
 [dependencies]
