@@ -27,3 +27,9 @@ Helpers remain example/test-only; Core/Runtime API and scheduling are unchanged.
 Automatic events are synthetic. A successful backend draw proves software
 submission, not a physical key-to-screen endpoint or human acceptance. Parent
 recovery after forced process termination is a separate harness responsibility.
+
+Owner-approved TabBeacon v0.9.0 bounded policy does not freeze this public API.
+TerminalGuard cleanup output does not prove DEC1049/mouse/paste restoration;
+without trusted DECRQM those states remain UNPROVEN. Products must redact before
+PermittedText construction. Synthetic HookStat is not real product migration,
+and software submission is not optical latency or human/visual qualification.

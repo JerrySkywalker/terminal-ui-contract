@@ -9,3 +9,8 @@ own actual commands, stage budgets, child process groups and stdout limits.
 
 MIT, Rust 1.97.1, Edition 2024. Depends on terminal-ui-contract =0.2.0.
 No publication/real Provider/product integration is implied by local tests.
+
+Owner-approved TabBeacon v0.9.0 bounded policy does not freeze this public API.
+Only admitted cooperative collectors are covered. Strict native/OS I/O stall
+exit is unguaranteed, and Drop Join remains unbounded. No thread model or
+permission default changes; public API acceptance and publication remain Owner gates.

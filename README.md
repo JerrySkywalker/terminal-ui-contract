@@ -49,3 +49,9 @@ Provider, ledger or Hook. See [API design](docs/API-DESIGN.md),
 [keymap](docs/KEYMAP.md) and [qualification](docs/QUALIFICATION.md).
 Actual terminal mouse/keyboard delivery and key-to-frame latency require separate
 Owner qualification. Merge and publication are separate authorizations.
+
+## Owner-approved v0.9.0 product boundary
+
+[Bounded policy and candidate API status](docs/V090-BOUNDED-POLICY.md) records
+cooperative cancellation, product redaction and independent terminal/human gates.
+Owner product policy does not freeze Core/Adapter APIs or qualify publication.
