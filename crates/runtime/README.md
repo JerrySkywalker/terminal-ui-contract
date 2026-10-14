@@ -1,3 +1,5 @@
+> Current decision — 2026-10-14: Owner approved this exact API in TUC source `eb16cd91f924c145180b5befcf9f2cacc7a46d84` (TUC-V020-EXACT-API-FREEZE-20261014). Earlier candidate statements below are historical. Cooperative cancellation/Drop and terminal/redaction limitations remain; publication and real consumer/physical qualification are separate.
+
 # terminal-ui-runtime (unreleased 0.1.0 candidate)
 
 Single-flight read-only collection, one coalesced pending request, generation and

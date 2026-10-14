@@ -1,3 +1,5 @@
+> Current decision — 2026-10-14: [exact public API freeze](docs/API-FREEZE-20261014.md) is Owner-approved at `eb16cd91f924c145180b5befcf9f2cacc7a46d84` for Core 0.2.0 / Runtime 0.1.0 / Ratatui 0.1.0. Earlier candidate/PENDING_OWNER statements below are preserved historical context. Publication, physical qualification and installation remain separate gates. No implementation or consumer pin changes.
+
 # terminal-ui-contract
 
 `terminal-ui-contract` is the dependency-neutral Human-interface contract shared
