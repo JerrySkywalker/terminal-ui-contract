@@ -3,7 +3,7 @@ use std::{
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
-        mpsc::{SyncSender, sync_channel},
+        mpsc::{Receiver, RecvTimeoutError, SyncSender, sync_channel},
     },
     thread,
     time::{Duration, Instant, SystemTime},
@@ -308,7 +308,43 @@ fn component_gallery_covers_cards_tables_evidence_modal_messages_and_color_level
 }
 struct SlowDocument {
     count: Arc<AtomicUsize>,
+    started: SyncSender<Instant>,
+    completed: SyncSender<(Instant, Duration)>,
+}
+
+// A cooperative fixture: a slow foreground never races a fixed collector sleep.
+// Real clocks and cancellation remain active, including during panic cleanup.
+struct ControlledDocument {
     started: SyncSender<()>,
+    release: Receiver<()>,
+}
+impl ReadOnlyCollector<usize, UiDocument> for ControlledDocument {
+    fn collect(
+        &mut self,
+        request: &RefreshRequest<usize>,
+        control: &CollectionControl,
+    ) -> Result<Collected<UiDocument>, CollectError> {
+        self.started.send(()).unwrap();
+        loop {
+            control.check()?;
+            match self.release.recv_timeout(Duration::from_millis(5)) {
+                Ok(()) => break,
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => return Err(CollectError::Cancelled),
+            }
+        }
+        control.check()?;
+        Ok(Collected {
+            value: document(Consumer::TabBeacon, request.reason, 7),
+            empty: false,
+            metadata: SnapshotMetadata {
+                source: "controlled synthetic document".into(),
+                scope: "fixture only".into(),
+                sampled_at: SystemTime::UNIX_EPOCH,
+                freshness: Freshness::Unknown,
+            },
+        })
+    }
 }
 
 struct ImmediateDocument;
@@ -392,8 +428,12 @@ impl ReadOnlyCollector<usize, UiDocument> for SlowDocument {
         control: &CollectionControl,
     ) -> Result<Collected<UiDocument>, CollectError> {
         self.count.fetch_add(1, Ordering::SeqCst);
-        self.started.send(()).unwrap();
+        let started = Instant::now();
+        self.started.send(started).unwrap();
         control.wait_for(Duration::from_secs(2))?;
+        self.completed
+            .send((Instant::now(), started.elapsed()))
+            .unwrap();
         Ok(Collected {
             value: document(Consumer::TabBeacon, request.reason, 7),
             empty: false,
@@ -410,10 +450,12 @@ impl ReadOnlyCollector<usize, UiDocument> for SlowDocument {
 fn foreground_keys_and_frames_continue_during_slow_read_only_snapshot() {
     let count = Arc::new(AtomicUsize::new(0));
     let (tx, rx) = sync_channel(1);
+    let (completed_tx, completed_rx) = sync_channel(1);
     let mut runtime = RefreshController::spawn(
         SlowDocument {
             count: count.clone(),
             started: tx,
+            completed: completed_tx,
         },
         RefreshPolicy {
             task_timeout: Duration::from_secs(5),
@@ -426,20 +468,46 @@ fn foreground_keys_and_frames_continue_during_slow_read_only_snapshot() {
     app.dirty = true;
     app.conflict = true;
     runtime.request(6, RequestKind::Manual).unwrap();
-    rx.recv_timeout(Duration::from_secs(1)).unwrap();
+    let collector_start = rx.recv_timeout(Duration::from_secs(1)).unwrap();
     let mut terminal = Terminal::new(TestBackend::new(100, 32)).unwrap();
     let start = Instant::now();
-    for _ in 0..100 {
+    let mut frames = Vec::with_capacity(100);
+    for frame in 0..100 {
+        let frame_start = Instant::now();
         app.handle(key("F2"), None);
+        let key_elapsed = frame_start.elapsed();
+        let draw_start = Instant::now();
         terminal
             .draw(|f| {
                 app.draw(f.area(), f.buffer_mut());
             })
             .unwrap();
-        assert_eq!(runtime.poll(), RefreshPoll::Pending);
+        let draw_elapsed = draw_start.elapsed();
+        let poll_start = Instant::now();
+        let outcome = runtime.poll();
+        frames.push((
+            frame,
+            key_elapsed,
+            draw_elapsed,
+            poll_start.elapsed(),
+            start.elapsed(),
+            outcome.clone(),
+        ));
+        if outcome != RefreshPoll::Pending {
+            println!(
+                "slow-frame performance interrupted: collector_to_loop={:?}; frames={frames:?}; collector_completion={:?}",
+                start.duration_since(collector_start),
+                completed_rx.try_recv()
+            );
+        }
+        assert_eq!(outcome, RefreshPoll::Pending);
     }
     let elapsed = start.elapsed();
     println!("synthetic 100 input+TestBackend frames while 2s collector: {elapsed:?}");
+    println!(
+        "slow-frame performance: collector_to_loop={:?}; frames={frames:?}",
+        start.duration_since(collector_start)
+    );
     assert!(elapsed < Duration::from_secs(2));
     assert_eq!(count.load(Ordering::SeqCst), 1);
     assert_eq!(app.query_requests, 0);
@@ -452,6 +520,13 @@ fn foreground_keys_and_frames_continue_during_slow_read_only_snapshot() {
         assert!(Instant::now() < deadline);
         thread::sleep(Duration::from_millis(2));
     }
+    let (completed_at, collector_elapsed) =
+        completed_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+    println!(
+        "slow-frame collector: elapsed={collector_elapsed:?}; completion_from_loop={:?}; accepted_from_loop={:?}",
+        completed_at.duration_since(start),
+        start.elapsed()
+    );
     let snapshot = runtime.snapshot().unwrap();
     app.accept_document(Arc::new(
         UiDocument::new(
@@ -465,6 +540,125 @@ fn foreground_keys_and_frames_continue_during_slow_read_only_snapshot() {
     assert_eq!(app.writer_calls, 0);
     assert_eq!(app.document.revision(), snapshot.revision());
     runtime.shutdown(Duration::from_secs(1)).unwrap();
+}
+
+#[test]
+fn foreground_keys_and_frames_remain_pending_until_collector_release() {
+    let (started_tx, started_rx) = sync_channel(1);
+    let (release_tx, release_rx) = sync_channel(1);
+    let mut runtime = RefreshController::spawn(
+        ControlledDocument {
+            started: started_tx,
+            release: release_rx,
+        },
+        RefreshPolicy {
+            task_timeout: Duration::from_secs(5),
+            poll_interval: Duration::from_secs(3),
+            stale_after: Duration::from_secs(10),
+        },
+    )
+    .unwrap();
+    let mut app = app(Consumer::TabBeacon, KeymapProfile::Standard);
+    app.dirty = true;
+    app.conflict = true;
+    let original = app.document.clone();
+    runtime.request(6, RequestKind::Manual).unwrap();
+    started_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+    let mut terminal = Terminal::new(TestBackend::new(100, 32)).unwrap();
+    for frame in 0..100 {
+        app.handle(key("F2"), None);
+        assert_eq!(
+            app.view.density,
+            if frame % 2 == 0 {
+                ViewDensity::Raw
+            } else {
+                ViewDensity::Smart
+            }
+        );
+        terminal
+            .draw(|f| {
+                app.draw(f.area(), f.buffer_mut());
+            })
+            .unwrap();
+        assert_eq!(runtime.poll(), RefreshPoll::Pending);
+        assert!(runtime.is_in_flight() && runtime.worker_owned());
+        assert!(runtime.snapshot().is_none());
+        assert!(Arc::ptr_eq(&original, &app.document));
+        assert_eq!((app.query_requests, app.writer_calls), (0, 0));
+        assert!(app.dirty && app.conflict);
+    }
+    release_tx.send(()).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(4);
+    loop {
+        let outcome = runtime.poll();
+        if matches!(outcome, RefreshPoll::Accepted { .. }) {
+            break;
+        }
+        assert_eq!(outcome, RefreshPoll::Pending);
+        assert!(Instant::now() < deadline);
+        thread::yield_now();
+    }
+    assert!(!runtime.is_in_flight());
+    let snapshot = runtime.snapshot().unwrap();
+    app.accept_document(Arc::new(
+        UiDocument::new(
+            snapshot.revision(),
+            snapshot.value().sampled_at(),
+            snapshot.value().facts().to_vec(),
+        )
+        .unwrap(),
+    ));
+    assert_eq!(app.document.revision(), snapshot.revision());
+    assert!(app.dirty && app.conflict);
+    assert_eq!((app.query_requests, app.writer_calls), (0, 0));
+    runtime.shutdown(Duration::from_secs(1)).unwrap();
+    assert!(!runtime.worker_owned());
+    assert_eq!(runtime.poll(), RefreshPoll::Stopped);
+}
+
+#[test]
+fn real_two_second_collector_accepts_and_joins_after_completion() {
+    let count = Arc::new(AtomicUsize::new(0));
+    let (started_tx, started_rx) = sync_channel(1);
+    let (completed_tx, completed_rx) = sync_channel(1);
+    let mut runtime = RefreshController::spawn(
+        SlowDocument {
+            count: count.clone(),
+            started: started_tx,
+            completed: completed_tx,
+        },
+        RefreshPolicy {
+            task_timeout: Duration::from_secs(5),
+            poll_interval: Duration::from_secs(3),
+            stale_after: Duration::from_secs(10),
+        },
+    )
+    .unwrap();
+    runtime.request(6, RequestKind::Manual).unwrap();
+    let start = started_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+    let (completed_at, elapsed) = completed_rx.recv_timeout(Duration::from_secs(4)).unwrap();
+    assert!(elapsed >= Duration::from_secs(2));
+    let deadline = start + Duration::from_secs(4);
+    loop {
+        let outcome = runtime.poll();
+        if matches!(outcome, RefreshPoll::Accepted { .. }) {
+            break;
+        }
+        assert_eq!(outcome, RefreshPoll::Pending);
+        assert!(Instant::now() < deadline);
+        thread::yield_now();
+    }
+    println!(
+        "real 2s lifecycle: collector={elapsed:?}; completed_at={:?}; accepted_at={:?}",
+        completed_at.duration_since(start),
+        start.elapsed()
+    );
+    assert_eq!(count.load(Ordering::SeqCst), 1);
+    assert!(!runtime.is_in_flight());
+    assert!(runtime.snapshot().is_some());
+    runtime.shutdown(Duration::from_secs(1)).unwrap();
+    assert!(!runtime.worker_owned());
+    assert_eq!(runtime.poll(), RefreshPoll::Stopped);
 }
 #[test]
 fn product_allowlist_keeps_synthetic_private_fields_out_of_both_projections() {
