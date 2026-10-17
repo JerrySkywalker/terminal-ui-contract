@@ -58,6 +58,43 @@ fn take_display_width(value: &str, width: usize) -> String {
     result
 }
 
+/// Deterministic grapheme/cell reflow. The adapter renders these rows without
+/// a second wrapping algorithm, so metrics and pixels have one source.
+/// Tabs expand to four cells; a cluster wider than the whole pane is represented
+/// by `?` rather than split or rendered as a blank. Width zero yields no rows.
+#[must_use]
+pub fn wrap_display_rows(value: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![];
+    }
+    let mut rows = vec![];
+    for logical in value.split('\n') {
+        let expanded = logical.replace('\t', "    ").replace('\r', "");
+        let mut row = String::new();
+        let mut used = 0;
+        for grapheme in expanded.graphemes(true) {
+            let cells = display_width(grapheme);
+            if cells > width {
+                if used == width {
+                    rows.push(std::mem::take(&mut row));
+                    used = 0;
+                }
+                row.push('?');
+                used += 1;
+            } else {
+                if used + cells > width {
+                    rows.push(std::mem::take(&mut row));
+                    used = 0;
+                }
+                row.push_str(grapheme);
+                used += cells;
+            }
+        }
+        rows.push(row);
+    }
+    rows
+}
+
 #[cfg(test)]
 mod tests {
     use super::{display_width, fit_display_width, pad_display_width, truncate_to_width};

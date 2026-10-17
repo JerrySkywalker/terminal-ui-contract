@@ -1,3 +1,5 @@
+> Current decision — 2026-10-14: [exact public API freeze](docs/API-FREEZE-20261014.md) is Owner-approved at `eb16cd91f924c145180b5befcf9f2cacc7a46d84` for Core 0.2.0 / Runtime 0.1.0 / Ratatui 0.1.0. Earlier candidate/PENDING_OWNER statements below are preserved historical context. Publication, physical qualification and installation remain separate gates. No implementation or consumer pin changes.
+
 # terminal-ui-contract
 
 `terminal-ui-contract` is the dependency-neutral Human-interface contract shared
@@ -27,3 +29,31 @@ cargo build --locked
 
 CI covers Windows and Linux. Releases require explicit authorization and must
 bind the tag, GitHub Release, and crates.io package to the same accepted commit.
+
+## v0.2 workspace candidate
+
+The unreleased candidate adds neutral input/keymap/focus/viewport/documents to
+Core and two separate packages: `terminal-ui-runtime` 0.1.0 (bounded read-only
+refresh/snapshots) and `terminal-ui-ratatui` 0.1.0 (backend adapter, components and
+synthetic Gallery). Core retains all 0.1 public APIs and has no Ratatui/Crossterm
+dependency. Rust 1.97.1, Edition 2024, MIT apply to all three packages.
+
+```text
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo run -p terminal-ui-ratatui --example gallery -- --consumer tabbeacon --size 100x32 --no-color
+cargo run -p terminal-ui-ratatui --example gallery -- --consumer hookstat --locale zh-CN --raw --size 40x16 --no-color
+cargo run -p terminal-ui-ratatui --example gallery -- --consumer tabbeacon --components --no-color
+```
+
+Gallery exports TestBackend text frames only: no real terminal, user configuration,
+Provider, ledger or Hook. See [API design](docs/API-DESIGN.md),
+[keymap](docs/KEYMAP.md) and [qualification](docs/QUALIFICATION.md).
+Actual terminal mouse/keyboard delivery and key-to-frame latency require separate
+Owner qualification. Merge and publication are separate authorizations.
+
+## Owner-approved v0.9.0 product boundary
+
+[Bounded policy and candidate API status](docs/V090-BOUNDED-POLICY.md) records
+cooperative cancellation, product redaction and independent terminal/human gates.
+Owner product policy does not freeze Core/Adapter APIs or qualify publication.

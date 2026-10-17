@@ -1,6 +1,6 @@
 [package]
 name = "terminal-ui-contract"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT"
@@ -8,7 +8,22 @@ description = "Dependency-neutral terminal Human interface contract primitives"
 repository = "https://github.com/JerrySkywalker/terminal-ui-contract"
 keywords = ["terminal", "tui", "accessibility", "localization"]
 categories = ["command-line-interface"]
+readme = "README.md"
+publish = ["crates-io"]
+include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md", "docs/**"]
 
 [dependencies]
 unicode-segmentation = "1.12"
 unicode-width = "0.2"
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+
+[workspace]
+members = ["crates/runtime", "crates/ratatui"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+repository = "https://github.com/JerrySkywalker/terminal-ui-contract"
