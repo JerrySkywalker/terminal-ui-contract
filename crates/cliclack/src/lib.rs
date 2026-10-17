@@ -4,6 +4,7 @@
 mod outcome;
 mod theme;
 pub use outcome::{PromptError, PromptOutcome};
+pub use terminal_ui_contract::{locale::Locale, theme::ColorLevel};
 pub use theme::{PromptTheme, visible_text};
 
 use std::{
@@ -11,7 +12,6 @@ use std::{
     marker::PhantomData,
     sync::{Mutex, MutexGuard},
 };
-use terminal_ui_contract::theme::ColorLevel;
 
 static PRESENTATION: Mutex<()> = Mutex::new(());
 
