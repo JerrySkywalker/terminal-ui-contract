@@ -43,6 +43,8 @@ pub struct PromptSession {
     previous_color: bool,
     previous_stdout_color: bool,
     theme: PromptTheme,
+    #[cfg(windows)]
+    owns_raw_mode: bool,
 }
 
 impl PromptSession {
@@ -57,6 +59,18 @@ impl PromptSession {
         let owner = PRESENTATION
             .try_lock()
             .map_err(|_| PromptError::TerminalBusy)?;
+        // console's per-key guard restores processed input while cliclack
+        // redraws. Keep Ctrl+C as input for the entire owned Windows session,
+        // so cancellation reaches the normal cursor/terminal cleanup path.
+        #[cfg(windows)]
+        let owns_raw_mode = {
+            let already_raw =
+                crossterm::terminal::is_raw_mode_enabled().map_err(PromptError::Io)?;
+            if !already_raw {
+                crossterm::terminal::enable_raw_mode().map_err(PromptError::Io)?;
+            }
+            !already_raw
+        };
         if std::env::var_os("NO_COLOR").is_some() {
             theme.color_level = ColorLevel::None;
         }
@@ -70,6 +84,8 @@ impl PromptSession {
             previous_color,
             previous_stdout_color,
             theme,
+            #[cfg(windows)]
+            owns_raw_mode,
         })
     }
 
@@ -82,7 +98,7 @@ impl PromptSession {
     fn rows(&self) -> usize {
         usize::from(console::Term::stderr().size().0)
             .saturating_sub(5)
-            .clamp(1, 8)
+            .max(1)
     }
 
     pub fn select<T: Clone + Eq>(
@@ -161,6 +177,10 @@ impl Drop for PromptSession {
         cliclack::reset_theme();
         console::set_colors_enabled_stderr(self.previous_color);
         console::set_colors_enabled(self.previous_stdout_color);
+        #[cfg(windows)]
+        if self.owns_raw_mode {
+            let _ = crossterm::terminal::disable_raw_mode();
+        }
     }
 }
 

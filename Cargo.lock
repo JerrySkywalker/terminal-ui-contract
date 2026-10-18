@@ -970,6 +970,7 @@ version = "0.1.0"
 dependencies = [
  "cliclack",
  "console",
+ "crossterm",
  "terminal-ui-contract",
 ]
 

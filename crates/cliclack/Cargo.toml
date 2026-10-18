@@ -13,3 +13,6 @@ publish = false
 terminal-ui-contract = { version = "=0.2.0", path = "../.." }
 cliclack = "=0.5.6"
 console = "0.16"
+
+[target.'cfg(windows)'.dependencies]
+crossterm = { version = "0.29", default-features = false, features = ["windows"] }
