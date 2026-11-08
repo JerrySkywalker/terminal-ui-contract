@@ -10,7 +10,7 @@ keywords = ["terminal", "tui", "accessibility", "localization"]
 categories = ["command-line-interface"]
 readme = "README.md"
 publish = ["crates-io"]
-include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md", "docs/**"]
+include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "README.zh-CN.md", "LICENSE", "CHANGELOG.md", "docs/**"]
 
 [dependencies]
 unicode-segmentation = "1.12"

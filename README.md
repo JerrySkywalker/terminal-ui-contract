@@ -1,59 +1,87 @@
-> Current decision — 2026-10-14: [exact public API freeze](docs/API-FREEZE-20261014.md) is Owner-approved at `eb16cd91f924c145180b5befcf9f2cacc7a46d84` for Core 0.2.0 / Runtime 0.1.0 / Ratatui 0.1.0. Earlier candidate/PENDING_OWNER statements below are preserved historical context. Publication, physical qualification and installation remain separate gates. No implementation or consumer pin changes.
+<p align="center">
+  <img src="docs/assets/brand/terminal-ui-contract-logo.svg" width="420" alt="Terminal UI Contract" />
+</p>
 
 # terminal-ui-contract
 
-`terminal-ui-contract` is the dependency-neutral Human-interface contract shared
-by JerrySkywalker terminal applications. It owns semantic shell, navigation,
-footer, edit, overlay, input, locale, and display-width behavior. Product
-adapters own their concrete Ratatui/Crossterm rendering and domain content.
+This Rust workspace supports **Ratatui for full-screen TUIs**
+and **cliclack for inline CLI prompts**. Both adapters build on the
+backend-neutral `terminal-ui-contract` core. The optional
+`terminal-ui-runtime` crate handles cooperative read-only refresh.
 
-The crate is published on crates.io as `terminal-ui-contract` 0.1.0. Consumers
-bind the exact released semver version before publishing in dependency order.
+English · [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [MIT](LICENSE)
 
-## Scope
+## Choose a crate
 
-- no product-specific domain concepts;
-- no terminal backend dependencies;
-- deterministic state-machine tests;
-- en-US and zh-CN locale-selection primitives;
-- display-cell-safe CJK truncation.
+| Use case | Cargo package | Distribution |
+| --- | --- | --- |
+| Full-screen dashboard, panes, focus, keyboard and mouse | [`terminal-ui-ratatui`](crates/ratatui/README.md) | [crates.io 0.1.0](https://crates.io/crates/terminal-ui-ratatui/0.1.0) |
+| Inline select, multi-select, input, confirmation or progress | [`terminal-ui-cliclack`](crates/cliclack/README.md) | Git revision; workspace version 0.1.0 |
+| Shared keymaps, focus, display-cell width, locales and semantic themes | [`terminal-ui-contract`](src/lib.rs) | [crates.io 0.2.0](https://crates.io/crates/terminal-ui-contract/0.2.0) |
+| Background read-only refresh and last-accepted snapshots | [`terminal-ui-runtime`](crates/runtime/README.md) | [crates.io 0.1.0](https://crates.io/crates/terminal-ui-runtime/0.1.0) |
 
-## Development
+The adapters are separate Cargo packages and can be used independently.
+Each adapter and Runtime depends on Core. Runtime is a dev dependency of
+the Ratatui package for its synthetic fixtures. Applications opt in to
+Runtime for their own collectors. All workspace packages use Rust 1.97.1
+or newer, Edition 2024, and the MIT license.
 
-```text
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
-cargo build --locked
+## Add a dependency
+
+For a full-screen app, start with the Ratatui adapter. Add Core for direct
+access to shared types, and add Runtime if your app needs background refresh.
+
+```toml
+[dependencies]
+terminal-ui-ratatui = "=0.1.0"
+terminal-ui-contract = "=0.2.0"
+# terminal-ui-runtime = "=0.1.0"
 ```
 
-CI covers Windows and Linux. Releases require explicit authorization and must
-bind the tag, GitHub Release, and crates.io package to the same accepted commit.
+For inline prompts, pin the Git commit. The adapter re-exports `Locale`
+and `ColorLevel` for `PromptTheme`.
 
-## v0.2 workspace candidate
+```toml
+[dependencies]
+terminal-ui-cliclack = { git = "https://github.com/JerrySkywalker/terminal-ui-contract", rev = "a175d97151a9b82d7defa65afe5a9fb5bc56e46e" }
+```
 
-The unreleased candidate adds neutral input/keymap/focus/viewport/documents to
-Core and two separate packages: `terminal-ui-runtime` 0.1.0 (bounded read-only
-refresh/snapshots) and `terminal-ui-ratatui` 0.1.0 (backend adapter, components and
-synthetic Gallery). Core retains all 0.1 public APIs and has no Ratatui/Crossterm
-dependency. Rust 1.97.1, Edition 2024, MIT apply to all three packages.
+If an app passes Core values such as `Locale` between the adapters, use
+the same Git URL and revision for both adapters, Core, and Runtime if used.
+Cargo treats Git and registry copies of Core as separate crates even
+when their versions match. Plan registry publication separately for apps
+that depend on the Git-only adapter. See [publication ordering](docs/RELEASE_ORDERING.md).
 
-```text
-cargo test --workspace --locked
+## Run an example
+
+Run these examples from a checkout of the current source.
+
+```sh
+# Full-screen layout rendered to text using Ratatui TestBackend
+cargo run --locked -p terminal-ui-ratatui --example gallery -- --size 100x32 --no-color
+
+# Inline prompts in an interactive terminal you own
+cargo run --locked -p terminal-ui-cliclack --example menu
+cargo run --locked -p terminal-ui-cliclack --example wizard
+```
+
+The [Ratatui examples](crates/ratatui/README.md) include an attended terminal
+demo. For inline prompts, create `PromptSession` only on interactive paths.
+Handle `PromptOutcome::Submitted`, `Cancelled`, and `Error` separately.
+The application owns validation and execution of submitted choices. Keep
+help, JSON and redirected paths separate, and release one terminal
+session before entering the other.
+
+## Develop in this workspace
+
+```sh
+cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo run -p terminal-ui-ratatui --example gallery -- --consumer tabbeacon --size 100x32 --no-color
-cargo run -p terminal-ui-ratatui --example gallery -- --consumer hookstat --locale zh-CN --raw --size 40x16 --no-color
-cargo run -p terminal-ui-ratatui --example gallery -- --consumer tabbeacon --components --no-color
+cargo test --workspace --locked
+cargo build --workspace --locked
+cargo package --workspace --locked
 ```
 
-Gallery exports TestBackend text frames only: no real terminal, user configuration,
-Provider, ledger or Hook. See [API design](docs/API-DESIGN.md),
-[keymap](docs/KEYMAP.md) and [qualification](docs/QUALIFICATION.md).
-Actual terminal mouse/keyboard delivery and key-to-frame latency require separate
-Owner qualification. Merge and publication are separate authorizations.
-
-## Owner-approved v0.9.0 product boundary
-
-[Bounded policy and candidate API status](docs/V090-BOUNDED-POLICY.md) records
-cooperative cancellation, product redaction and independent terminal/human gates.
-Owner product policy does not freeze Core/Adapter APIs or qualify publication.
+[Windows and Linux CI](https://github.com/JerrySkywalker/terminal-ui-contract/actions/workflows/ci.yml)
+runs these checks. The [documentation index](docs/README.md) links to source
+entry points, keymap configuration, and historical API and qualification records.
