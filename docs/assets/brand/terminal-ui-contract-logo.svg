@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 228" role="img" aria-labelledby="title desc">
+  <title id="title">Terminal UI Contract</title>
+  <desc id="desc">A divided terminal window pairs a full-screen pane layout with an inline prompt on a shared baseline.</desc>
+  <rect x="2" y="2" width="836" height="224" rx="30" fill="#14213D" stroke="#537394" stroke-width="4"/>
+  <g transform="translate(42 38)">
+    <rect x="2" y="2" width="148" height="148" rx="21" fill="#20345A" stroke="#80C7FF" stroke-width="4"/>
+    <path d="M3 31h146M3 104h146" fill="none" stroke="#537394" stroke-width="4"/>
+    <g fill="#80C7FF">
+      <circle cx="21" cy="17" r="3"/>
+      <circle cx="33" cy="17" r="3"/>
+      <circle cx="45" cy="17" r="3"/>
+      <rect x="19" y="46" width="33" height="44" rx="5"/>
+      <rect x="62" y="46" width="70" height="17" rx="5"/>
+      <rect x="62" y="73" width="70" height="17" rx="5" opacity=".55"/>
+    </g>
+    <path d="m23 119 9 8-9 8m22 0h21" fill="none" stroke="#63E2C2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" font-weight="700">
+    <text x="232" y="104" fill="#F4F7FB" font-size="72" letter-spacing="2">TERMINAL UI</text>
+    <text x="236" y="165" fill="#63E2C2" font-size="42" letter-spacing="10">CONTRACT</text>
+  </g>
+</svg>

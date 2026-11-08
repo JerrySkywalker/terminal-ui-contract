@@ -1,18 +1,23 @@
-> Current decision — 2026-10-14: [exact public API freeze](API-FREEZE-20261014.md) is Owner-approved at `eb16cd91f924c145180b5befcf9f2cacc7a46d84` for Core 0.2.0 / Runtime 0.1.0 / Ratatui 0.1.0. Earlier candidate/PENDING_OWNER statements below are preserved historical context. Publication, physical qualification and installation remain separate gates. No implementation or consumer pin changes.
-
 # Publication ordering
 
-The first public release of `terminal-ui-contract` precedes consumer releases.
+See the [workspace README](../README.md) for currently available versions.
+A new release, tag or registry publication requires separate explicit
+authorization. Core, Runtime and Ratatui have registry packages. The
+cliclack adapter has `publish = false` and is consumed by Git revision.
 
-Before a consumer can publish a crates.io version that names this crate:
+For a future release of the shared registry packages:
 
-1. settle and release the exact shared-crate revision to crates.io;
-2. wait for registry availability and verify an external consumer can resolve
-   that crate version;
-3. replace each development Git pin with the released semver dependency;
-4. run the consumer's exact-head package and install checks; and
-5. publish consumers only after their source resolves the released shared
-   crate version.
+1. Settle the exact source and version of every package in scope.
+2. Publish Core before dependents that require that version. Publish Runtime
+   before Ratatui when Ratatui's package verification requires the new
+   Runtime development dependency.
+3. Verify the released versions resolve in an external registry consumer.
+4. Bind the consumer to the released versions and run its package and
+   install checks against that revision before consumer publication.
 
-The Git revision pins used during development are reproducible integration
-inputs, not publishable crates.io dependency declarations.
+A Git revision pin is suitable for a Cargo build from source. A Git-only
+normal dependency such as `terminal-ui-cliclack` needs a separate
+distribution decision before its consumer can publish to crates.io.
+
+See the [historical API freeze](API-FREEZE-20261014.md) for the scope of
+the October 2026 Core, Runtime and Ratatui decision.
